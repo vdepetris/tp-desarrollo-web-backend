@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+// Tabla para tus suplementos
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  email     String   @unique
+  password  String
+  rol       String   @default("cliente")
+  pedidos   Pedido[]
+  creadoEn  DateTime @default(now())
+}
+
+model Categoria {
+  id        Int        @id @default(autoincrement())
+  nombre    String     @unique
+  productos Producto[]
+}
+
+model Producto {
+  id           Int          @id @default(autoincrement())
+  nombre       String
+  descripcion  String?
+  precio       Decimal
+  stock        Int          @default(0)
+  categoriaId  Int
+  categoria    Categoria    @relation(fields: [categoriaId], references: [id])
+  itemsPedido  ItemPedido[]
+}
+
+model Pedido {
+  id         Int          @id @default(autoincrement())
+  usuarioId  Int
+  usuario    Usuario      @relation(fields: [usuarioId], references: [id])
+  estado     String       @default("pendiente")
+  total      Decimal      @default(0)
+  fecha      DateTime     @default(now())
+  items      ItemPedido[]
+}
+
+model ItemPedido {
+  id             Int      @id @default(autoincrement())
+  pedidoId       Int
+  pedido         Pedido   @relation(fields: [pedidoId], references: [id])
+  productoId     Int
+  producto       Producto @relation(fields: [productoId], references: [id])
+  cantidad       Int
+  precioUnitario Decimal
+}

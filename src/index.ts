@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import categoriaRoutes from "./routes/categoria.routes";
 import productoRoutes from "./routes/producto.routes";

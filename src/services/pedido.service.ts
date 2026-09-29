@@ -1,3 +1,5 @@
+import { AppError } from "../errors/AppError";
+import { StockInsuficienteError } from "../errors/ErrorNegocio";
 import prisma from "../config/prisma";
 
 // Forma en la que el controller nos va a mandar los items al crear un pedido.
@@ -32,10 +34,11 @@ export const crearPedido = async (usuarioId: number, items: ItemInput[]) => {
       });
 
       if (!producto) {
-        throw new Error(`Producto ${item.productoId} no existe`);
+                throw new AppError(404, `Producto ${item.productoId} no existe`);
+
       }
       if (producto.stock < item.cantidad) {
-        throw new Error(`Stock insuficiente para el producto ${producto.nombre}`);
+        throw new StockInsuficienteError(producto.nombre);
       }
 
       const precioUnitario = producto.precio;

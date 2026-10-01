@@ -52,6 +52,8 @@ model Producto {
   categoriaId  Int
   categoria    Categoria    @relation(fields: [categoriaId], references: [id])
   itemsPedido  ItemPedido[]
+  marcaId?      Int
+  marca?        Marca @relation(fields: [marcaId], references: [id])
 }
 
 model Pedido {
@@ -72,4 +74,13 @@ model ItemPedido {
   producto       Producto @relation(fields: [productoId], references: [id])
   cantidad       Int
   precioUnitario Decimal  @db.Decimal(10, 2)
+
+}
+
+model Marca {
+  id           Int     @id @default(autoincrement())
+  nombre       String   @unique
+  descripcion  String?
+  origen       String?
+  productos   Producto[]
 }

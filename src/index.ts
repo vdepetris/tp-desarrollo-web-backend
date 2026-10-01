@@ -3,6 +3,8 @@ import cors from "cors";
 import express from "express";
 import categoriaRoutes from "./routes/categoria.routes";
 import productoRoutes from "./routes/producto.routes";
+import pedidoRoutes from "./routes/pedido.routes";
+import usuarioRoutes from "./routes/usuario.routes";
 import { errorHandler } from "./middlewares/errorHandler";
 
 const app = express();
@@ -18,6 +20,9 @@ app.get("/", (req, res) => {
 
 app.use("/categorias", categoriaRoutes);
 app.use("/productos", productoRoutes);
+app.use("/pedidos", pedidoRoutes);
+app.use("/usuarios", usuarioRoutes);
+
 
 app.use(errorHandler); // ← siempre al final
 

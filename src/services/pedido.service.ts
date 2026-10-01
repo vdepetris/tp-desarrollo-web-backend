@@ -1,3 +1,4 @@
+import { EstadoPedido, Prisma } from "@prisma/client";
 import { AppError } from "../errors/AppError";
 import { StockInsuficienteError } from "../errors/ErrorNegocio";
 import prisma from "../config/prisma";
@@ -10,14 +11,22 @@ type ItemInput = {
 
 export const listarPedidos = async () => {
   return prisma.pedido.findMany({
-    include: { items: { include: { producto: true } }, usuario: true },
+        include: {
+      items: { include: { producto: true } },
+      usuario: { select: { id: true, nombre: true, email: true } },
+    },
+
   });
 };
 
 export const obtenerPedidoPorId = async (id: number) => {
   return prisma.pedido.findUnique({
     where: { id },
-    include: { items: { include: { producto: true } }, usuario: true },
+        include: {
+      items: { include: { producto: true } },
+      usuario: { select: { id: true, nombre: true, email: true } },
+    },
+
   });
 };
 
@@ -25,36 +34,44 @@ export const crearPedido = async (usuarioId: number, items: ItemInput[]) => {
   // Todo esto tiene que pasar junto o no pasar nada:
   // si falla el descuento de stock de un producto, no queremos un pedido a medias.
   return prisma.$transaction(async (tx) => {
-    let total = 0;
+    let total = new Prisma.Decimal(0);
     const itemsData = [];
 
-    for (const item of items) {
+        for (const item of items) {
+      // Lo buscamos para saber si existe y para tomar su precio y su nombre.
       const producto = await tx.producto.findUnique({
         where: { id: item.productoId },
       });
 
       if (!producto) {
-                throw new AppError(404, `Producto ${item.productoId} no existe`);
-
+        throw new AppError(404, `Producto ${item.productoId} no existe`);
       }
-      if (producto.stock < item.cantidad) {
+
+      // Chequeo y descuento en UNA sola operación atómica:
+      // UPDATE producto SET stock = stock - cantidad WHERE id = ? AND stock >= cantidad
+      const resultado = await tx.producto.updateMany({
+        where: { id: item.productoId, stock: { gte: item.cantidad } },
+        data: { stock: { decrement: item.cantidad } },
+      });
+
+      // count = cantidad de filas modificadas. Si es 0, no alcanzaba el stock
+      // (aunque otro pedido lo haya comprado un instante antes).
+      if (resultado.count === 0) {
         throw new StockInsuficienteError(producto.nombre);
       }
 
       const precioUnitario = producto.precio;
-      total += Number(precioUnitario) * item.cantidad;
+      // Sumamos con Decimal y no con Number para no tener errores de redondeo.
+      total = total.add(precioUnitario.mul(item.cantidad));
+      
 
       itemsData.push({
         productoId: item.productoId,
         cantidad: item.cantidad,
         precioUnitario,
       });
-
-      await tx.producto.update({
-        where: { id: item.productoId },
-        data: { stock: producto.stock - item.cantidad },
-      });
     }
+
 
     return tx.pedido.create({
       data: {
@@ -66,8 +83,8 @@ export const crearPedido = async (usuarioId: number, items: ItemInput[]) => {
     });
   });
 };
-
-export const actualizarEstadoPedido = async (id: number, estado: string) => {
+  
+export const actualizarEstadoPedido = async (id: number, estado: EstadoPedido) => {
   return prisma.pedido.update({ where: { id }, data: { estado } });
 };
 

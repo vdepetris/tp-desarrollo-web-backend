@@ -1,8 +1,27 @@
+import { Prisma } from "@prisma/client";
 import prisma from "../config/prisma";
 
-export const listarProductos = async () => {
-  return prisma.producto.findMany({ include: { categoria: true } }); //Trae todos los registros el findMany
+export const listarProductos = async (filtros: {
+  categoriaId?: number;
+  q?: string;
+} = {}) => {
+  // Armamos el where solo con los filtros que llegaron. Sin filtros queda {} y trae todo.
+  const where: Prisma.ProductoWhereInput = {};
+
+  if (filtros.categoriaId !== undefined) {
+    where.categoriaId = filtros.categoriaId;
+  }
+  if (filtros.q !== undefined) {
+    // Busca el texto en el nombre O en la descripción (como un LIKE '%texto%' en SQL).
+    where.OR = [
+      { nombre: { contains: filtros.q } },
+      { descripcion: { contains: filtros.q } },
+    ];
+  }
+
+  return prisma.producto.findMany({ where, include: { categoria: true } });
 };
+
 
 export const obtenerProductoPorId = async (id: number) => {
   return prisma.producto.findUnique({ //Busca uno por campo único

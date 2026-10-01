@@ -1,3 +1,4 @@
+import { Rol } from "@prisma/client";
 import prisma from "../config/prisma";
 
 // Campos seguros para devolver al cliente: nunca incluir "password" acá.
@@ -30,7 +31,7 @@ export const crearUsuario = async (data: {
   nombre: string;
   email: string;
   password: string;
-  rol?: string;
+  rol?: Rol;
 }) => {
   const creado = await prisma.usuario.create({ data });
   const { password, ...resto } = creado;
@@ -43,7 +44,7 @@ export const actualizarUsuario = async (
     nombre: string;
     email: string;
     password: string;
-    rol: string;
+    rol: Rol;
   }>
 ) => {
   const actualizado = await prisma.usuario.update({ where: { id }, data });

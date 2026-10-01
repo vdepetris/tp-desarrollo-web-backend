@@ -25,12 +25,34 @@ const verificarCategoria = async (categoriaId: number) => {
   }
 };
 
-// GET /productos
+// GET /productos?categoriaId=1&q=whey
 export const getProductos = async (req: Request, res: Response) => {
+  const { categoriaId, q } = req.query;
+  const filtros: { categoriaId?: number; q?: string } = {};
+
+  if (categoriaId !== undefined) {
+    const id = Number(categoriaId);
+    if (typeof categoriaId !== "string" || !Number.isInteger(id) || id <= 0) {
+      throw new AppError(400, "categoriaId debe ser un número entero positivo");
+    }
+    filtros.categoriaId = id;
+  }
+
+  if (q !== undefined) {
+    if (typeof q !== "string") {
+      throw new AppError(400, "q debe ser un texto");
+    }
+    // Un ?q= vacío no filtra nada.
+    if (q.trim() !== "") {
+      filtros.q = q.trim();
+    }
+  }
+
   // Cada producto viene con su categoría completa (include en el service).
-  const productos = await productoService.listarProductos();
+  const productos = await productoService.listarProductos(filtros);
   res.json(productos);
 };
+
 
 // GET /productos/:id
 export const getProductoPorId = async (req: Request, res: Response) => {

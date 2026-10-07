@@ -20,9 +20,6 @@ import { AppError } from "../errors/AppError";
   el errorHandler, usando mapPrismaError.
 */
 
-// Todo lo que viene en la URL es string. Number("abc") da NaN y
-
-
 // GET /categorias
 export const getCategorias = async (req: Request, res: Response) => {
   const categorias = await categoriaService.listarCategorias();
@@ -61,14 +58,20 @@ export const postCategoria = async (req: Request, res: Response) => {
 // PUT /categorias/:id
 export const putCategoria = async (req: Request, res: Response) => {
   const id = leerId(req);
-  const { nombre } = req.body ?? {};
+  const { nombre, estado } = req.body ?? {};
 
   if (typeof nombre !== "string" || nombre.trim() === "") {
     throw new AppError(400, "El nombre es obligatorio");
   }
 
+  // Validamos el estado antes de enviarlo a Prisma. Si no viene, conservamos el actual
+  // para que los clientes que solo editan el nombre sigan funcionando.
+  if (estado !== undefined && estado !== "activo" && estado !== "inactivo") {
+    throw new AppError(400, "El estado debe ser activo o inactivo");
+  }
+
   // Si el id no existe, Prisma tira P2025 y el errorHandler responde 404.
-  const actualizada = await categoriaService.actualizarCategoria(id, nombre.trim());
+  const actualizada = await categoriaService.actualizarCategoria(id, nombre.trim(), estado);
   res.json(actualizada);
 };
 

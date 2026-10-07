@@ -26,6 +26,11 @@ enum EstadoPedido {
   cancelado
 }
 
+enum EstadoCategoria {
+  activo
+  inactivo
+}
+
 // Tabla para tus suplementos
 model Usuario {
   id        Int      @id @default(autoincrement())
@@ -40,6 +45,7 @@ model Usuario {
 model Categoria {
   id        Int        @id @default(autoincrement())
   nombre    String     @unique
+  estado    EstadoCategoria @default(activo)
   productos Producto[]
 }
 

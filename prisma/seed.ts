@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { Rol } from "@prisma/client";
+import { EstadoPedido, Prisma, Rol } from "@prisma/client";
 import prisma from "../src/config/prisma";
 
 /*
@@ -68,6 +68,58 @@ async function main() {
     update: {},
     create: { nombre: "Cliente Prueba", email: "cliente@tienda.com", password: "cliente123", rol: Rol.cliente },
   });
+
+  // Más clientes para que los pedidos tengan variedad.
+  const clientes = [
+    { nombre: "Juan Pérez", email: "juan@tienda.com" },
+    { nombre: "María Gómez", email: "maria@tienda.com" },
+    { nombre: "Lucas Fernández", email: "lucas@tienda.com" },
+    { nombre: "Sofía Díaz", email: "sofia@tienda.com" },
+  ];
+
+  for (const cliente of clientes) {
+    await prisma.usuario.upsert({
+      where: { email: cliente.email },
+      update: {},
+      create: { ...cliente, password: "cliente123", rol: Rol.cliente },
+    });
+  }
+
+  // Pedidos de ejemplo. No tienen campo único, así que solo se cargan si no hay ninguno.
+  // Se crean directo (sin pasar por crearPedido), por lo que no descuentan stock.
+  if ((await prisma.pedido.count()) === 0) {
+    const pedidosEjemplo = [
+      { email: "juan@tienda.com", estado: EstadoPedido.entregado, diasAtras: 9, items: [["Whey Protein 1kg", 1], ["Creatina Monohidrato 300g", 1]] },
+      { email: "maria@tienda.com", estado: EstadoPedido.pendiente, diasAtras: 1, items: [["Multivitamínico 60 caps", 2]] },
+      { email: "lucas@tienda.com", estado: EstadoPedido.enviado, diasAtras: 3, items: [["Whey Protein Isolate 900g", 1], ["Omega 3 90 caps", 2]] },
+      { email: "sofia@tienda.com", estado: EstadoPedido.cancelado, diasAtras: 6, items: [["Proteína Vegana 1kg", 1]] },
+      { email: "cliente@tienda.com", estado: EstadoPedido.pagado, diasAtras: 2, items: [["Creatina Monohidrato 500g", 2], ["Omega 3 90 caps", 1]] },
+      { email: "juan@tienda.com", estado: EstadoPedido.pendiente, diasAtras: 0, items: [["Whey Protein 1kg", 2]] },
+    ] as const;
+
+    for (const pedido of pedidosEjemplo) {
+      const usuario = await prisma.usuario.findUniqueOrThrow({ where: { email: pedido.email } });
+
+      // Tomamos el precio actual de cada producto, igual que hace crearPedido.
+      let total = new Prisma.Decimal(0);
+      const items: Prisma.ItemPedidoUncheckedCreateWithoutPedidoInput[] = [];
+      for (const [nombre, cantidad] of pedido.items) {
+        const producto = await prisma.producto.findFirstOrThrow({ where: { nombre } });
+        total = total.add(producto.precio.mul(cantidad));
+        items.push({ productoId: producto.id, cantidad, precioUnitario: producto.precio });
+      }
+
+      await prisma.pedido.create({
+        data: {
+          usuarioId: usuario.id,
+          estado: pedido.estado,
+          total,
+          fecha: new Date(Date.now() - pedido.diasAtras * 24 * 60 * 60 * 1000),
+          items: { create: items },
+        },
+      });
+    }
+  }
 
   console.log("Seed completado");
 }

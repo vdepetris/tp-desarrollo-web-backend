@@ -89,5 +89,10 @@ export const actualizarEstadoPedido = async (id: number, estado: EstadoPedido) =
 };
 
 export const eliminarPedido = async (id: number) => {
-  return prisma.pedido.delete({ where: { id } });
+  // Los items referencian al pedido, así que se borran primero (todo o nada).
+  // Si el pedido no existe, delete tira P2025 y se revierte la transacción.
+  return prisma.$transaction(async (tx) => {
+    await tx.itemPedido.deleteMany({ where: { pedidoId: id } });
+    return tx.pedido.delete({ where: { id } });
+  });
 };

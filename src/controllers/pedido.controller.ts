@@ -108,3 +108,15 @@ export const patchEstadoPedido = async (req: Request, res: Response) => {
 
   res.json(pedido);
 };
+
+// PUT /pedidos/:id
+// Body: { estado: "enviado" }. Lo único modificable de un pedido es su estado
+// (items y total quedan fijos), así que hace lo mismo que el PATCH.
+export const putPedido = patchEstadoPedido;
+
+// DELETE /pedidos/:id
+export const deletePedido = async (req: Request, res: Response) => {
+  const id = leerId(req);
+  await pedidoService.eliminarPedido(id);
+  res.status(204).send();
+};

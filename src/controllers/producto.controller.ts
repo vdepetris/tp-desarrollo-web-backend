@@ -26,9 +26,15 @@ const verificarCategoria = async (categoriaId: number) => {
 };
 
 // GET /productos?categoriaId=1&q=whey
+// GET /productos?page=1&categoriaId=1&q=whey
 export const getProductos = async (req: Request, res: Response) => {
-  const { categoriaId, q } = req.query;
-  const filtros: { categoriaId?: number; q?: string } = {};
+  const { categoriaId, q, page, precioMaximo, orden } = req.query;
+  const filtros: {
+    categoriaId?: number;
+    q?: string;
+    precioMaximo?: number;
+    orden?: string;
+  } = {};
 
   if (categoriaId !== undefined) {
     const id = Number(categoriaId);
@@ -42,14 +48,40 @@ export const getProductos = async (req: Request, res: Response) => {
     if (typeof q !== "string") {
       throw new AppError(400, "q debe ser un texto");
     }
-    // Un ?q= vacío no filtra nada.
+
     if (q.trim() !== "") {
       filtros.q = q.trim();
     }
   }
 
-  // Cada producto viene con su categoría completa (include en el service).
-  const productos = await productoService.listarProductos(filtros);
+  if (precioMaximo !== undefined) {
+    const precio = Number(precioMaximo);
+    if (typeof precioMaximo !== "string" || precioMaximo.trim() === "" || !Number.isFinite(precio) || precio < 0) {
+      throw new AppError(400, "precioMaximo debe ser un número mayor o igual a 0");
+    }
+    filtros.precioMaximo = precio;
+  }
+
+  if (orden !== undefined) {
+    if (typeof orden !== "string" || !["relevancia", "menor-precio", "mayor-precio", "nombre"].includes(orden)) {
+      throw new AppError(400, "orden no es válido");
+    }
+    filtros.orden = orden;
+  }
+
+  // Sin page, usamos la página 1.
+  const pagina = page === undefined ? 1 : Number(page);
+
+  if (
+    (page !== undefined && typeof page !== "string") ||
+    !Number.isSafeInteger(pagina) ||
+    pagina < 1
+  ) {
+    throw new AppError(400, "page debe ser un número entero positivo");
+  }
+
+  // Pasamos los filtros y la página al service.
+  const productos = await productoService.listarProductos(filtros, pagina);
   res.json(productos);
 };
 

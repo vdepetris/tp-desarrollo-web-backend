@@ -22,7 +22,13 @@ import { AppError } from "../errors/AppError";
 
 // GET /categorias
 export const getCategorias = async (req: Request, res: Response) => {
-  const categorias = await categoriaService.listarCategorias();
+  const pagina = Number(req.query.page ?? 1);
+
+  if (!Number.isSafeInteger(pagina) || pagina < 1) {
+    throw new AppError(400, "page debe ser un entero positivo");
+  }
+
+  const categorias = await categoriaService.listarCategorias(pagina);
   res.json(categorias);
 };
 

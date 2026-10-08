@@ -2,8 +2,13 @@ import prisma from "../config/prisma";
 import type { EstadoCategoria } from "@prisma/client";
 
 // Contamos los productos relacionados sin traer todos sus datos.
-export const listarCategorias = async () => {
+export const listarCategorias = async (pagina = 1) => {
+  const porPagina = 9;
+
   const categorias = await prisma.categoria.findMany({
+    skip: (pagina - 1) * porPagina,
+    take: porPagina,
+    orderBy: { id: "asc" },
     include: {
       _count: {
         select: { productos: true },
@@ -11,11 +16,18 @@ export const listarCategorias = async () => {
     },
   });
 
-  // Convertimos la estructura de Prisma al campo que utiliza la tabla del frontend.
-  return categorias.map(({ _count, ...categoria }) => ({
+  const datos = categorias.map(({ _count, ...categoria }) => ({
     ...categoria,
     cantidadProductos: _count.productos,
   }));
+
+  const total = await prisma.categoria.count();
+
+  return {
+    datos,
+    porPagina,
+    totalPaginas: Math.ceil(total / porPagina),
+  };
 };
 
 export const obtenerCategoriaPorId = async (id: number) => {

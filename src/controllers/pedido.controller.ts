@@ -19,7 +19,7 @@ const ESTADOS_VALIDOS: string[] = Object.values(EstadoPedido);
 
 // GET /pedidos
 export const getPedidos = async (req: Request, res: Response) => {
-  const pedidos = await pedidoService.listarPedidos();
+  const pedidos = await pedidoService.listarPedidos(req.session.usuario!.rol === "admin" ? undefined : req.session.usuario!.id);
   res.json(pedidos);
 };
 
@@ -28,7 +28,7 @@ export const getPedidoPorId = async (req: Request, res: Response) => {
   const id = leerId(req);
   const pedido = await pedidoService.obtenerPedidoPorId(id);
 
-  if (!pedido) {
+  if (!pedido || (req.session.usuario!.rol !== "admin" && pedido.usuarioId !== req.session.usuario!.id)) {
     throw new AppError(404, "Pedido no encontrado");
   }
 
@@ -38,8 +38,9 @@ export const getPedidoPorId = async (req: Request, res: Response) => {
 // POST /pedidos
 // Body: { usuarioId: 1, items: [{ productoId: 1, cantidad: 2 }] }
 export const postPedido = async (req: Request, res: Response) => {
-  // TODO: cuando esté el login, usuarioId sale del token y no del body.
-  const { usuarioId, items } = req.body ?? {};
+  // La identidad sale de la sesión: no se puede comprar a nombre de otra persona.
+  const usuarioId = req.session.usuario!.id;
+  const { items } = req.body ?? {};
   const errores: string[] = [];
 
   if (!Number.isInteger(usuarioId) || usuarioId <= 0) {

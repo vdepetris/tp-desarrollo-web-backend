@@ -17,6 +17,41 @@ import { leerId } from "../utils/leerId";
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_MIN = 6;
 
+// POST /usuarios/login: valida la entrada; los errores llegan al errorHandler.
+export const loginUsuario = async (req: Request, res: Response) => {
+  const { email, password, recordar = false } = req.body ?? {};
+
+  if (
+    typeof email !== "string" ||
+    !EMAIL_REGEX.test(email.trim()) ||
+    typeof password !== "string" ||
+    password.length === 0
+  ) {
+    throw new AppError(400, "Ingresá un email válido y tu contraseña");
+  }
+  if (typeof recordar !== "boolean") {
+    throw new AppError(400, "Recordarme debe ser verdadero o falso");
+  }
+
+  // Normaliza el email igual que al registrar, sin modificar la contraseña.
+  const usuario = await usuarioService.autenticarUsuario(
+    email.trim().toLowerCase(),
+    password
+  );
+  // Renueva el identificador para evitar reutilizar una sesión anterior.
+  await new Promise<void>((resolve, reject) => {
+    req.session.regenerate(error => error ? reject(error) : resolve());
+  });
+  req.session.usuario = usuario;
+  // Con Recordarme, la cookie dura 30 días; sin marcar, dura la sesión del navegador.
+  // Nunca se guarda la contraseña en el navegador.
+  if (recordar) req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+  await new Promise<void>((resolve, reject) => {
+    req.session.save(error => error ? reject(error) : resolve());
+  });
+  res.json(usuario);
+};
+
 /*
   El email es único en la base. Si se repite, Prisma tiraría P2002 y el
   errorHandler respondería un 409 genérico. Lo chequeamos antes para dar
@@ -75,7 +110,7 @@ export const postUsuario = async (req: Request, res: Response) => {
   const emailNormalizado = email.trim().toLowerCase();
   await verificarEmailLibre(emailNormalizado);
 
-  // TODO (auth): hashear el password con bcrypt antes de guardarlo.
+  // El service hashea la contraseña antes de guardarla.
   const nuevo = await usuarioService.crearUsuario({
     nombre: nombre.trim(),
     email: emailNormalizado,
@@ -111,7 +146,7 @@ export const putUsuario = async (req: Request, res: Response) => {
     if (typeof password !== "string" || password.length < PASSWORD_MIN) {
       errores.push(`El password debe tener al menos ${PASSWORD_MIN} caracteres`);
     } else {
-      // TODO (auth): hashear el password con bcrypt antes de guardarlo.
+      // El service hashea la nueva contraseña antes de actualizarla.
       data.password = password;
     }
   }

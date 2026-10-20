@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { EstadoPedido, Prisma, Rol } from "@prisma/client";
 import prisma from "../src/config/prisma";
+import { hash } from "bcryptjs";
 
 /*
   SEED: carga datos de ejemplo en la base.
@@ -56,17 +57,20 @@ async function main() {
   }
 
   // Usuarios de prueba. El email es único, así que sirve para el upsert.
-  // TODO: cuando hagamos el login, los passwords se guardan hasheados con bcrypt.
+  // Los nuevos usuarios de prueba usan hashes compatibles con el login.
+  // update: {} conserva las credenciales de los usuarios que ya existan.
+  const passwordAdmin = await hash("admin123", 10);
+  const passwordCliente = await hash("cliente123", 10);
   await prisma.usuario.upsert({
     where: { email: "admin@tienda.com" },
     update: {},
-    create: { nombre: "Admin", email: "admin@tienda.com", password: "admin123", rol: Rol.admin },
+    create: { nombre: "Admin", email: "admin@tienda.com", password: passwordAdmin, rol: Rol.admin },
   });
 
   await prisma.usuario.upsert({
     where: { email: "cliente@tienda.com" },
     update: {},
-    create: { nombre: "Cliente Prueba", email: "cliente@tienda.com", password: "cliente123", rol: Rol.cliente },
+    create: { nombre: "Cliente Prueba", email: "cliente@tienda.com", password: passwordCliente, rol: Rol.cliente },
   });
 
   // Más clientes para que los pedidos tengan variedad.
@@ -81,7 +85,7 @@ async function main() {
     await prisma.usuario.upsert({
       where: { email: cliente.email },
       update: {},
-      create: { ...cliente, password: "cliente123", rol: Rol.cliente },
+      create: { ...cliente, password: passwordCliente, rol: Rol.cliente },
     });
   }
 

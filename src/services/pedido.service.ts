@@ -9,8 +9,10 @@ type ItemInput = {
   cantidad: number;
 };
 
-export const listarPedidos = async () => {
+export const listarPedidos = async (usuarioId?: number) => {
   return prisma.pedido.findMany({
+    // Admin consulta todos; cliente solo los de su sesión.
+    where: usuarioId === undefined ? {} : { usuarioId },
         include: {
       items: { include: { producto: true } },
       usuario: { select: { id: true, nombre: true, email: true } },

@@ -32,6 +32,7 @@ export const listarProductos = async (
   let orderBy: Prisma.ProductoOrderByWithRelationInput[] = [{ id: "asc" }];
   if (filtros.orden === "menor-precio") orderBy = [{ precio: "asc" }, { id: "asc" }];
   if (filtros.orden === "mayor-precio") orderBy = [{ precio: "desc" }, { id: "asc" }];
+  if (filtros.orden === "recientes") orderBy = [{ id: "desc" }];
   if (filtros.orden === "nombre") orderBy = [{ nombre: "asc" }, { id: "asc" }];
 
   const datos = await prisma.producto.findMany({
@@ -39,7 +40,7 @@ export const listarProductos = async (
     skip: (pagina - 1) * porPagina,
     take: porPagina,
     orderBy,
-    include: { categoria: true },
+    include: { categoria: true, marca: true },
   });
 
   const total = await prisma.producto.count({ where });
@@ -56,7 +57,7 @@ export const listarProductos = async (
 export const obtenerProductoPorId = async (id: number) => {
   return prisma.producto.findUnique({ //Busca uno por campo único
     where: { id },
-    include: { categoria: true },
+    include: { categoria: true, marca: true },
   });
 };
 
@@ -66,6 +67,7 @@ export const crearProducto = async (data: {
   precio: number;
   stock: number;
   categoriaId: number;
+  marcaId?: number | null;
 }) => {
   return prisma.producto.create({ data });
 };
@@ -78,6 +80,7 @@ export const actualizarProducto = async (
     precio: number;
     stock: number;
     categoriaId: number;
+  marcaId?: number | null;
   }>
 ) => {
   return prisma.producto.update({ where: { id }, data });

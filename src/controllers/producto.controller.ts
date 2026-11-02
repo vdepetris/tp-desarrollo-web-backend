@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as productoService from "../services/producto.service";
+import * as marcaService from "../services/marca.service";
 import * as categoriaService from "../services/categoria.service";
 import { AppError } from "../errors/AppError";
 import { leerId } from "../utils/leerId";
@@ -22,6 +23,16 @@ const verificarCategoria = async (categoriaId: number) => {
   const categoria = await categoriaService.obtenerCategoriaPorId(categoriaId);
   if (!categoria) {
     throw new AppError(400, "La categoría indicada no existe");
+  }
+};
+
+const verificarMarca = async (marcaId: unknown) => {
+  if (marcaId === undefined || marcaId === null) return;
+  if (typeof marcaId !== "number" || !Number.isSafeInteger(marcaId) || marcaId <= 0) {
+    throw new AppError(400, "La marca no es válida");
+  }
+  if (!await marcaService.obtenerMarcaPorId(marcaId)) {
+    throw new AppError(400, "La marca indicada no existe");
   }
 };
 
@@ -63,7 +74,7 @@ export const getProductos = async (req: Request, res: Response) => {
   }
 
   if (orden !== undefined) {
-    if (typeof orden !== "string" || !["relevancia", "menor-precio", "mayor-precio", "nombre"].includes(orden)) {
+    if (typeof orden !== "string" || !["relevancia", "menor-precio", "mayor-precio", "nombre", "recientes"].includes(orden)) {
       throw new AppError(400, "orden no es válido");
     }
     filtros.orden = orden;
@@ -101,7 +112,7 @@ export const getProductoPorId = async (req: Request, res: Response) => {
 
 // POST /productos
 export const postProducto = async (req: Request, res: Response) => {
-  const { nombre, descripcion, precio, stock, categoriaId } = req.body ?? {};
+  const { nombre, descripcion, precio, stock, categoriaId, marcaId } = req.body ?? {};
 
   // Juntamos todos los errores para que el cliente los vea de una vez.
   const errores: string[] = [];
@@ -129,6 +140,7 @@ export const postProducto = async (req: Request, res: Response) => {
   }
 
   await verificarCategoria(categoriaId);
+  await verificarMarca(marcaId);
 
   const nuevo = await productoService.crearProducto({
     nombre: nombre.trim(),
@@ -136,6 +148,7 @@ export const postProducto = async (req: Request, res: Response) => {
     precio,
     stock,
     categoriaId,
+    ...(marcaId !== undefined ? { marcaId } : {}),
   });
 
   res.status(201).json(nuevo);
@@ -144,7 +157,7 @@ export const postProducto = async (req: Request, res: Response) => {
 // PUT /productos/:id
 export const putProducto = async (req: Request, res: Response) => {
   const id = leerId(req);
-  const { nombre, descripcion, precio, stock, categoriaId } = req.body ?? {};
+  const { nombre, descripcion, precio, stock, categoriaId, marcaId } = req.body ?? {};
   const errores: string[] = [];
 
   /*
@@ -194,6 +207,8 @@ export const putProducto = async (req: Request, res: Response) => {
     throw new AppError(400, errores.join(". "));
   }
 
+  if (marcaId !== undefined) data.marcaId = marcaId;
+
   // Si mandaron un body vacío, avisamos en vez de hacer un update sin cambios.
   if (Object.keys(data).length === 0) {
     throw new AppError(400, "No se envió ningún campo para actualizar");
@@ -203,6 +218,8 @@ export const putProducto = async (req: Request, res: Response) => {
   if (categoriaId !== undefined) {
     await verificarCategoria(categoriaId);
   }
+
+  await verificarMarca(marcaId);
 
   // Si el producto no existe, Prisma tira P2025 y el errorHandler responde 404.
   const actualizado = await productoService.actualizarProducto(id, data);

@@ -3,6 +3,7 @@ import cors from "cors";
 import express from "express";
 import session from "express-session";
 import nodemailer from "nodemailer";
+import marcaRoutes from "./routes/marca.routes";
 import categoriaRoutes from "./routes/categoria.routes";
 import productoRoutes from "./routes/producto.routes";
 import pedidoRoutes from "./routes/pedido.routes";
@@ -33,6 +34,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/categorias", categoriaRoutes);
+app.use("/marcas", marcaRoutes);
 app.use("/productos", productoRoutes);
 app.use("/pedidos", pedidoRoutes);
 app.use("/usuarios", usuarioRoutes);

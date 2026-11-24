@@ -173,10 +173,6 @@ prisma/
 └── seed.ts           # Datos de ejemplo
 ```
 
-## Para el equipo: cambios en la base de datos
-
-- Después de hacer `git pull`, si hay migraciones nuevas: `npm run db:migrate` y `npm run db:generate`.
-- Si **modificás** `schema.prisma`, creá la migración con:
 
   ```bash
   npx prisma migrate dev --name descripcion_del_cambio
